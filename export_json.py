@@ -1,41 +1,49 @@
-import pandas as pd
-from sqlalchemy import create_engine
 import json
+import psycopg2
 
-def export_all_tables_to_json(engine):
-    # З'єднання з базою даних PostgreSQL
-    database_url = 'postgresql://postgres:111@localhost:5432/f1'
-    engine = create_engine(database_url)
+# З'єднання з базою даних PostgreSQL
+username = 'postgres'
+password = '111'
+database = 'f1'
+host = 'localhost'
+port = '5432'
 
-    # Список таблиць бази даних
-    tables = ['constructors', 'drivers', 'races', 'results']
+conn = psycopg2.connect(user=username, password=password, dbname=database, host=host, port=port)
 
-    # Створити порожній словник для збереження даних
-    data_dict = {}
+# Створення курсора
+cur = conn.cursor()
 
-    # Експортувати дані для кожної таблиці
-    for table in tables:
-        # Зчитати дані з таблиці у Pandas DataFrame
-        query = f"SELECT * FROM {table};"
-        df = pd.read_sql(query, engine)
+# Отримання списку всіх таблиць
+cur.execute("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'")
+tables = cur.fetchall()
 
-        # Конвертувати DataFrame у словник і додати його до загального словника
-        data_dict[table] = df.to_dict(orient='records')
+# Створення об'єкта для збереження усіх даних
+all_data = {}
 
-    # Зберегти дані у JSON-файл
-    json_filename = "all_data.json"
-    with open(json_filename, 'w') as json_file:
-        json.dump(data_dict, json_file, indent=4)
+# Експорт даних з кожної таблиці у відповідний ключ у JSON-файлі
+for table in tables:
+    table_name = table[0]
 
-    print(f"Дані з усіх таблиць збережено у {json_filename}")
+    # Вибірка даних з таблиці
+    cur.execute(f"SELECT * FROM {table_name}")
+    rows = cur.fetchall()
 
-    # Закрити з'єднання
-    engine.dispose()
+    # Додавання даних до об'єкта
+    all_data[table_name] = []
 
-if __name__ == "__main__":
-    # З'єднання з базою даних PostgreSQL
-    database_url = 'postgresql://postgres:111@localhost:5432/f1'
-    engine = create_engine(database_url)
+    for row in rows:
+        row_dict = {}
+        for i, desc in enumerate(cur.description):
+            row_dict[desc[0]] = row[i]
+        all_data[table_name].append(row_dict)
 
-    # Викликати функцію для експорту всіх таблиць у JSON
-    export_all_tables_to_json(engine)
+# Шлях до JSON-файлу
+json_file_path = "all_data.json"
+
+# Запис усіх даних у JSON-файл
+with open(json_file_path, 'w', encoding='utf-8') as json_file:
+    json.dump(all_data, json_file, indent=2)
+
+# Закриття курсора та з'єднання
+cur.close()
+conn.close()
