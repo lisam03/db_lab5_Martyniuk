@@ -1,30 +1,36 @@
-import pandas as pd
-from sqlalchemy import create_engine
+import csv
+import psycopg2
 
-def export_table_to_csv(table_name, engine):
-    # Зчитати дані з таблиці у Pandas DataFrame
-    query = f"SELECT * FROM {table_name};"
-    df = pd.read_sql(query, engine)
+# З'єднання з базою даних PostgreSQL
+username = 'postgres'
+password = '111'
+database = 'f1'
+host = 'localhost'
+port = '5432'
 
-    # Зберегти дані у CSV-файл
-    csv_filename = f"{table_name}.csv"
-    df.to_csv(csv_filename, index=False)
-    print(f"Дані з таблиці {table_name} збережено у {csv_filename}")
+conn = psycopg2.connect(user=username, password=password, dbname=database, host=host, port=port)
 
-def main():
-    # З'єднання з базою даних PostgreSQL
-    database_url = 'postgresql://postgres:111@localhost:5432/f1'
-    engine = create_engine(database_url)
+# Створення курсора
+cur = conn.cursor()
 
-    # Список таблиць для експорту
-    tables_to_export = ['constructors', 'drivers', 'races', 'results']
 
-    # Експортувати дані для кожної таблиці
-    for table in tables_to_export:
-        export_table_to_csv(table, engine)
+tables = ['constructors', 'drivers', 'races', 'results']
 
-    # Закрити з'єднання
-    engine.dispose()
+for table in tables:
+    # Вибірка даних з таблиці
+    cur.execute(f"SELECT * FROM {table}")
+    rows = cur.fetchall()
 
-if __name__ == "__main__":
-    main()
+    # Шлях до CSV-файлу
+    csv_file_path = f"{table}.csv"
+
+    # Запис даних у CSV-файл
+    with open(csv_file_path, 'w', encoding='utf-8', newline='') as csv_file:
+        csv_writer = csv.writer(csv_file)
+
+        # Запис заголовка
+        csv_writer.writerow([desc[0] for desc in cur.description])
+
+        # Запис даних
+        csv_writer.writerows(rows)
+
