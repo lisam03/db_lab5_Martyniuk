@@ -23,24 +23,33 @@ SELECT * FROM FinalPositionPoints;
 
 create_view_1 = '''
 CREATE OR REPLACE VIEW TeamStandings AS
-SELECT name, SUM(points) AS TotalPoints
-	FROM constructors NATURAL JOIN results
-GROUP BY name
+SELECT constructor_name, SUM(points) AS TotalPoints
+	FROM results INNER JOIN constructors ON results.constructor_id = constructors.constructor_id 
+GROUP BY constructor_name
 ORDER BY TotalPoints DESC;
 '''
 
 create_view_2 = '''
 CREATE OR REPLACE VIEW DriversNatoinality AS
-SELECT nationality, COUNT(forename) AS Total
-	FROM drivers
-GROUP BY nationality;
+SELECT driver_nationality as Nationality, COUNT(DISTINCT drivers.driver_id) AS Total 
+	FROM results INNER JOIN drivers ON results.driver_id = drivers.driver_id
+GROUP BY driver_nationality;
 '''
+
+# create_view_2 = '''
+# CREATE OR REPLACE VIEW DriversNatoinality AS
+# SELECT driver_nationality as Nationality, COUNT(drivers.driver_id) AS Total
+# 	FROM results INNER JOIN drivers ON results.driver_id = drivers.driver_id
+# 	where race_id = 1098
+# GROUP BY driver_nationality;
+# '''
 
 create_view_3 = '''
 CREATE OR REPLACE VIEW FinalPositionPoints AS
-SELECT DISTINCT position as Position, points
+SELECT final_position as Position, points 
 	FROM results
-GROUP BY position, points
+	where race_id = 1098
+GROUP BY final_position, points
 ORDER BY points DESC;
 '''
 
@@ -74,7 +83,7 @@ with conn:
     bar_ax.set_xlabel('Команди')
     bar_ax.set_ylabel('Сума балів')
     bar_ax.set_xticks(x_range)
-    bar_ax.set_xticklabels(constructors)
+    bar_ax.set_xticklabels(constructors, rotation=45)
     bar_ax.legend()
 
     """
